@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path name="share" path="share/" />
+    <cache-path name="preview" path="preview/" />
+    <!-- Android 8–9 downloads (public Downloads/Cloudly or the app's external files folder). -->
+    <external-path name="downloads" path="Download/" />
+    <external-files-path name="app_downloads" path="Download/" />
+</paths>

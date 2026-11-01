@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cloudly</string>
+    <string name="notification_channel_transfers">Transfers</string>
+    <string name="notification_channel_transfers_desc">Progress of uploads, downloads and cross-account transfers</string>
+</resources>

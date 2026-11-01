@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloudly mark: a rounded cloud built from stacked layers, in the accent colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#7B8CFF"
+        android:pathData="M40,70 L70,70 C77.2,70 83,64.2 83,57 C83,50.2 77.8,44.6 71.1,44.05 C68.9,36.5 61.9,31 53.6,31 C44.6,31 37.1,37.5 35.6,46.1 C29.6,47.3 25,52.6 25,59 C25,65.1 29.9,70 36,70 Z" />
+    <path
+        android:fillColor="#0D0E11"
+        android:pathData="M42,58 L66,58 C67.1,58 68,58.9 68,60 C68,61.1 67.1,62 66,62 L42,62 C40.9,62 40,61.1 40,60 C40,58.9 40.9,58 42,58 Z" />
+    <path
+        android:fillColor="#0D0E11"
+        android:fillAlpha="0.55"
+        android:pathData="M46,50 L62,50 C63.1,50 64,50.9 64,52 C64,53.1 63.1,54 62,54 L46,54 C44.9,54 44,53.1 44,52 C44,50.9 44.9,50 46,50 Z" />
+</vector>
