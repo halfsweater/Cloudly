@@ -11,3 +11,6 @@
 *.keystore
 *.jks
 /app/release/
+
+# Local signing output and credentials (never commit)
+/release/
