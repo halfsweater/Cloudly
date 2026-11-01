@@ -98,6 +98,21 @@ class GoogleAuthManager(
     /** Parses the result of the consent screen launched from [AuthOutcome.NeedsConsent]. */
     fun outcomeFromIntent(data: Intent?): AuthOutcome = authClient.getAuthorizationResultFromIntent(data).toOutcome()
 
+    /** Turns Google Identity errors into a message that says what actually went wrong. */
+    fun describeError(e: Throwable): String {
+        val code = (e as? ApiException)?.statusCode ?: return e.message ?: "Google sign-in failed"
+        return when (code) {
+            CommonStatusCodes.DEVELOPER_ERROR ->
+                "Google rejected Cloudly's configuration (DEVELOPER_ERROR). Check that an Android OAuth client exists " +
+                    "for package ${app.packageName} with this APK's SHA-1, and that the Drive API is enabled."
+            CommonStatusCodes.CANCELED, 12501 -> "Sign-in was cancelled"
+            CommonStatusCodes.NETWORK_ERROR -> "Network error while contacting Google. Check your connection."
+            CommonStatusCodes.SIGN_IN_REQUIRED -> "Google needs you to sign in to this account on the device first."
+            CommonStatusCodes.INTERNAL_ERROR -> "Google Play services had an internal error (code 8). Try again."
+            else -> "Google authorization failed (status $code: ${CommonStatusCodes.getStatusCodeString(code)})"
+        }
+    }
+
     private fun AuthorizationResult.toOutcome(): AuthOutcome {
         val pending = pendingIntent
         if (hasResolution() && pending != null) return AuthOutcome.NeedsConsent(pending)

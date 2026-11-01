@@ -60,7 +60,10 @@ class AccountConnector internal constructor(
             } catch (e: Throwable) {
                 pending = null
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                UiMessages.show(e.userMessage())
+                UiMessages.show(
+                    if (e is com.google.android.gms.common.api.ApiException) auth.describeError(e) else e.userMessage(),
+                    "OK",
+                ) {}
             } finally {
                 if (pending == null) busyState.value = false
             }
@@ -85,7 +88,14 @@ class AccountConnector internal constructor(
         scope.launch {
             try {
                 if (!ok) {
-                    UiMessages.show("Google Drive access wasn't approved")
+                    // A non-OK result may still carry Google's error; surface it instead of a generic message.
+                    val reason = if (data == null) "Google Drive access wasn't approved" else try {
+                        auth.outcomeFromIntent(data)
+                        "Google Drive access wasn't approved"
+                    } catch (e: Throwable) {
+                        auth.describeError(e)
+                    }
+                    UiMessages.show(reason, "OK") {}
                 } else {
                     when (val outcome = auth.outcomeFromIntent(data)) {
                         is GoogleAuthManager.AuthOutcome.Granted -> finish(outcome)
@@ -94,7 +104,10 @@ class AccountConnector internal constructor(
                 }
             } catch (e: Throwable) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                UiMessages.show(e.userMessage())
+                UiMessages.show(
+                    if (e is com.google.android.gms.common.api.ApiException) auth.describeError(e) else e.userMessage(),
+                    "OK",
+                ) {}
             } finally {
                 pending = null
                 busyState.value = false
