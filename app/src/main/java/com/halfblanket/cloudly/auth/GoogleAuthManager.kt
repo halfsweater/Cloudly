@@ -103,15 +103,32 @@ class GoogleAuthManager(
         val code = (e as? ApiException)?.statusCode ?: return e.message ?: "Google sign-in failed"
         return when (code) {
             CommonStatusCodes.DEVELOPER_ERROR ->
-                "Google rejected Cloudly's configuration (DEVELOPER_ERROR). Check that an Android OAuth client exists " +
-                    "for package ${app.packageName} with this APK's SHA-1, and that the Drive API is enabled."
+                "Google rejected Cloudly's configuration (code 10). ${configHint()}"
             CommonStatusCodes.CANCELED, 12501 -> "Sign-in was cancelled"
             CommonStatusCodes.NETWORK_ERROR -> "Network error while contacting Google. Check your connection."
             CommonStatusCodes.SIGN_IN_REQUIRED -> "Google needs you to sign in to this account on the device first."
-            CommonStatusCodes.INTERNAL_ERROR -> "Google Play services had an internal error (code 8). Try again."
+            CommonStatusCodes.INTERNAL_ERROR -> "Google Play services returned an internal error (code 8). ${configHint()}"
             else -> "Google authorization failed (status $code: ${CommonStatusCodes.getStatusCodeString(code)})"
         }
     }
+
+    /** What Google Cloud Console must match: the real package and signing-certificate SHA-1 of this install. */
+    private fun configHint(): String =
+        "Google Cloud needs an Android OAuth client for package ${app.packageName} with SHA-1 ${signingSha1()}, " +
+            "in the same project where the Drive API is enabled and your account is a test user."
+
+    fun signingSha1(): String = runCatching {
+        val pm = app.packageManager
+        val sig = if (android.os.Build.VERSION.SDK_INT >= 28) {
+            pm.getPackageInfo(app.packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
+                .signingInfo!!.apkContentsSigners.first()
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getPackageInfo(app.packageName, android.content.pm.PackageManager.GET_SIGNATURES).signatures!!.first()
+        }
+        java.security.MessageDigest.getInstance("SHA-1").digest(sig.toByteArray())
+            .joinToString(":") { "%02X".format(it) }
+    }.getOrDefault("unknown")
 
     private fun AuthorizationResult.toOutcome(): AuthOutcome {
         val pending = pendingIntent

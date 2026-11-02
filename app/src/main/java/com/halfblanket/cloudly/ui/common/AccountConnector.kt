@@ -28,6 +28,7 @@ class AccountConnector internal constructor(
     private val scope: CoroutineScope,
     private val busyState: MutableState<Boolean>,
     private val launch: (IntentSenderRequest) -> Unit,
+    private val launchAccountPicker: (android.content.Intent) -> Unit,
     private val onConnected: (AccountEntity) -> Unit,
 ) {
     internal data class Pending(val email: String?, val name: String?, val photo: String?, val reason: Reason)
@@ -38,9 +39,37 @@ class AccountConnector internal constructor(
     private val auth get() = activity.container.auth
     private val repo get() = activity.container.accountRepository
 
-    fun addAccount(access: DriveAccess) = run {
-        val picked = if (auth.canPickAccounts) auth.pickGoogleAccount(activity) ?: return@run else null
-        request(Pending(picked?.email, picked?.displayName, picked?.photoUrl, Reason.ADD), access)
+    private var pickerAccess: DriveAccess? = null
+
+    fun addAccount(access: DriveAccess) {
+        if (!auth.canPickAccounts) {
+            // No Web client ID: use Google Play services' own account chooser so authorization always
+            // targets a specific account (authorizing with no account can fail with an internal error).
+            if (busyState.value) return
+            busyState.value = true
+            pickerAccess = access
+            launchAccountPicker(
+                com.google.android.gms.common.AccountPicker.newChooseAccountIntent(
+                    com.google.android.gms.common.AccountPicker.AccountChooserOptions.Builder()
+                        .setAllowableAccountsTypes(listOf(GoogleAuthManager.GOOGLE_ACCOUNT_TYPE))
+                        .setAlwaysShowAccountPicker(true)
+                        .build(),
+                ),
+            )
+            return
+        }
+        run {
+            val picked = auth.pickGoogleAccount(activity) ?: return@run
+            request(Pending(picked.email, picked.displayName, picked.photoUrl, Reason.ADD), access)
+        }
+    }
+
+    internal fun onAccountPicked(email: String?) {
+        val access = pickerAccess ?: DriveAccess.FULL
+        pickerAccess = null
+        busyState.value = false
+        if (email.isNullOrBlank()) return
+        run { request(Pending(email, null, null, Reason.ADD), access) }
     }
 
     fun reconnect(account: AccountEntity) = run {
@@ -61,7 +90,7 @@ class AccountConnector internal constructor(
                 pending = null
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 UiMessages.show(
-                    if (e is com.google.android.gms.common.api.ApiException) auth.describeError(e) else e.userMessage(),
+                    if (e is com.google.android.gms.common.api.ApiException) "Requesting access: " + auth.describeError(e) else e.userMessage(),
                     "OK",
                 ) {}
             } finally {
@@ -93,7 +122,7 @@ class AccountConnector internal constructor(
                         auth.outcomeFromIntent(data)
                         "Google Drive access wasn't approved"
                     } catch (e: Throwable) {
-                        auth.describeError(e)
+                        "Consent screen: " + auth.describeError(e)
                     }
                     UiMessages.show(reason, "OK") {}
                 } else {
@@ -144,8 +173,14 @@ fun rememberAccountConnector(onConnected: (AccountEntity) -> Unit = {}): Account
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         holder[0]?.onConsentResult(result.resultCode == Activity.RESULT_OK, result.data)
     }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val email = if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
+        } else null
+        holder[0]?.onAccountPicked(email)
+    }
     val connector = remember(activity) {
-        AccountConnector(activity, scope, busy, { launcher.launch(it) }, onConnected)
+        AccountConnector(activity, scope, busy, { launcher.launch(it) }, { picker.launch(it) }, onConnected)
     }
     holder[0] = connector
     return connector
