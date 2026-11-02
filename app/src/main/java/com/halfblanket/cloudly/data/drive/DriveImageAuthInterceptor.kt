@@ -9,9 +9,19 @@ import okhttp3.Response
  * interceptor swaps it for that account's bearer token — and only ever sends tokens to Google hosts.
  * Thumbnail links (googleusercontent.com) are usually pre-signed, so they are tried without a token first.
  */
-class DriveImageAuthInterceptor(private val tokens: AccessTokenSource) : Interceptor {
+class DriveImageAuthInterceptor(
+    private val tokens: AccessTokenSource,
+    private val photos: com.halfblanket.cloudly.data.photos.PhotosPickerApi.PhotosTokenSource,
+) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
+        original.header(PHOTOS_HEADER)?.let { acc ->
+            // Google Photos picker thumbnails always need the account's Photos token, and only go to Google.
+            val bare = original.newBuilder().removeHeader(PHOTOS_HEADER).build()
+            if (!bare.url.host.endsWith(".googleusercontent.com")) return chain.proceed(bare)
+            val token = runBlocking { photos.photosToken(acc) }
+            return chain.proceed(bare.newBuilder().header("Authorization", "Bearer $token").build())
+        }
         val accountId = original.header(HEADER) ?: return chain.proceed(original)
         val bare = original.newBuilder().removeHeader(HEADER).build()
         val host = bare.url.host
@@ -35,5 +45,6 @@ class DriveImageAuthInterceptor(private val tokens: AccessTokenSource) : Interce
 
     companion object {
         const val HEADER = "X-Cloudly-Account"
+        const val PHOTOS_HEADER = "X-Cloudly-Photos-Account"
     }
 }

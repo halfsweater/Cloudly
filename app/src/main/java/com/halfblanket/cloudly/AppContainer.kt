@@ -45,9 +45,10 @@ class AppContainer(val app: Application) {
     }
 
     /** OkHttp client for images: attaches the owning account's token to Drive thumbnail/content URLs. */
-    val imageHttp: OkHttpClient by lazy { http.newBuilder().addInterceptor(DriveImageAuthInterceptor(auth)).build() }
+    val imageHttp: OkHttpClient by lazy { http.newBuilder().addInterceptor(DriveImageAuthInterceptor(auth, auth)).build() }
 
     val driveApi by lazy { DriveApi(http, auth, json) }
+    val photosApi by lazy { com.halfblanket.cloudly.data.photos.PhotosPickerApi(http, auth, json) }
     val driveRepository by lazy { DriveRepository(driveApi, db.listCache(), json) }
     val accountRepository by lazy {
         AccountRepository(db.accounts(), db.transfers(), db.listCache(), auth, driveApi, settings, appScope)

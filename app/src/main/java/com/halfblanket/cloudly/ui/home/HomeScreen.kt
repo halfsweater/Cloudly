@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.SwapVert
@@ -59,7 +60,8 @@ import com.halfblanket.cloudly.ui.common.NewItemSheet
 import com.halfblanket.cloudly.ui.common.cloudlyViewModel
 import com.halfblanket.cloudly.ui.common.rememberUploadLaunchers
 import com.halfblanket.cloudly.ui.components.AccountAvatar
-import com.halfblanket.cloudly.ui.components.AccountSwitcherChip
+import com.halfblanket.cloudly.ui.components.CloudlyTopBar
+import com.halfblanket.cloudly.ui.components.SearchPill
 import com.halfblanket.cloudly.ui.components.Banner
 import com.halfblanket.cloudly.ui.components.BarSegment
 import com.halfblanket.cloudly.ui.components.CloudlyCard
@@ -91,6 +93,7 @@ fun HomeScreen(
     onOpenFolder: (DriveFile) -> Unit,
     onPreview: (DriveFile) -> Unit,
     onSeeAllFiles: () -> Unit,
+    onOpenPhotos: () -> Unit = {},
 ) {
     val vm = cloudlyViewModel { HomeViewModel(it) }
     val actions = cloudlyViewModel { FileActionsViewModel(it) }
@@ -119,27 +122,24 @@ fun HomeScreen(
         PullToRefreshBox(state.refreshing, onRefresh = vm::refresh, modifier = Modifier.padding(padding).fillMaxSize()) {
             LazyColumn(contentPadding = PaddingValues(bottom = 100.dp), modifier = Modifier.fillMaxSize()) {
                 item {
-                    Row(
-                        Modifier.statusBarsPadding().fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    CloudlyTopBar(
+                        title = "Hi, " + (account?.displayName?.substringBefore(' ') ?: "there"),
+                        subtitle = greeting(),
+                        account = account,
+                        onAvatar = onOpenAccounts,
                     ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(greeting(), style = MaterialTheme.typography.bodyMedium, color = CloudlyTheme.extra.muted)
-                            Text(
-                                account?.displayName?.substringBefore(' ') ?: "Cloudly",
-                                style = MaterialTheme.typography.headlineMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        IconButton(onClick = onTransfers) {
-                            BadgedBox(badge = { if (activeTransfers > 0) Badge { Text("$activeTransfers") } }) {
-                                Icon(Icons.Rounded.SwapVert, "Transfers")
+                        if (activeTransfers > 0) {
+                            IconButton(onClick = onTransfers) {
+                                BadgedBox(badge = { Badge { Text("$activeTransfers") } }) { Icon(Icons.Rounded.SwapVert, "Transfers") }
                             }
                         }
-                        IconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search") }
                     }
-                    AccountSwitcherChip(account, onOpenAccounts, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    SearchPill(if (accounts.accounts.size > 1) "Search all your Drives" else "Search in Drive", onSearch)
+                    QuickActions(
+                        onUpload = { showNew = true },
+                        onPhotos = onOpenPhotos,
+                        onFiles = onSeeAllFiles,
+                    )
                 }
                 if (account != null) {
                     item { StorageCard(account, onStorage) }
@@ -326,5 +326,34 @@ private fun RailOrHint(section: Section, icon: androidx.compose.ui.graphics.vect
             Spacer(Modifier.width(12.dp))
             Text(section.error ?: hint, style = MaterialTheme.typography.bodySmall, color = CloudlyTheme.extra.muted)
         }
+    }
+}
+
+/** Three big, labelled shortcuts for the most common jobs. */
+@Composable
+internal fun QuickActions(onUpload: () -> Unit, onPhotos: () -> Unit, onFiles: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        QuickAction(Icons.Rounded.CloudUpload, "Upload", onUpload, Modifier.weight(1f))
+        QuickAction(Icons.Rounded.PhotoLibrary, "Photos", onPhotos, Modifier.weight(1f))
+        QuickAction(Icons.Rounded.Folder, "All files", onFiles, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun QuickAction(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit, modifier: Modifier) {
+    Column(
+        modifier.clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(onClick = onClick).padding(vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp)) }
+        Spacer(Modifier.height(8.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge)
     }
 }

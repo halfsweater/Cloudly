@@ -48,6 +48,7 @@ import com.halfblanket.cloudly.ui.common.cloudlyViewModel
 import com.halfblanket.cloudly.ui.components.AccountRow
 import com.halfblanket.cloudly.ui.components.BarSegment
 import com.halfblanket.cloudly.ui.components.CloudlyCard
+import com.halfblanket.cloudly.ui.components.CloudlyTopBar
 import com.halfblanket.cloudly.ui.components.FileListItem
 import com.halfblanket.cloudly.ui.components.LegendDot
 import com.halfblanket.cloudly.ui.components.SectionHeader
@@ -66,6 +67,7 @@ fun StorageScreen(
     onOpenCleanup: (String, CleanupKind) -> Unit,
     onOpenTrash: (String) -> Unit,
     onPreview: (DriveFile) -> Unit,
+    onAvatar: () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val actions = cloudlyViewModel { FileActionsViewModel(it) }
@@ -77,17 +79,13 @@ fun StorageScreen(
     PullToRefreshBox(state.refreshing, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(bottom = 32.dp), modifier = Modifier.fillMaxSize()) {
             item {
-                Row(Modifier.statusBarsPadding().fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Storage", style = MaterialTheme.typography.headlineMedium)
-                        Text(
-                            "${Format.bytes(totalUsed)} used" + (totalLimit?.let { " of ${Format.bytes(it)}" } ?: "") +
-                                " across ${accounts.accounts.size} account${if (accounts.accounts.size == 1) "" else "s"}",
-                            style = MaterialTheme.typography.bodyMedium, color = CloudlyTheme.extra.muted,
-                        )
-                    }
-                    IconButton(onClick = vm::refresh) { Icon(Icons.Rounded.Refresh, "Refresh") }
-                }
+                CloudlyTopBar(
+                    title = "Storage",
+                    subtitle = "${Format.bytes(totalUsed)} used" + (totalLimit?.let { " of ${Format.bytes(it)}" } ?: "") +
+                        " · ${accounts.accounts.size} account${if (accounts.accounts.size == 1) "" else "s"}",
+                    account = accounts.active,
+                    onAvatar = onAvatar,
+                ) { IconButton(onClick = vm::refresh) { Icon(Icons.Rounded.Refresh, "Refresh") } }
             }
             item { SectionHeader("Accounts") }
             items(accounts.accounts, key = { it.id }) { acc ->

@@ -24,6 +24,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.ManageAccounts
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -145,6 +147,9 @@ fun AccountSwitcherSheet(
     onAdd: () -> Unit,
     onManage: () -> Unit,
     onDismiss: () -> Unit,
+    onTransfers: (() -> Unit)? = null,
+    activeTransfers: Int = 0,
+    onSettings: (() -> Unit)? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -163,6 +168,17 @@ fun AccountSwitcherSheet(
             Spacer(Modifier.height(8.dp))
             SheetAction(Icons.Rounded.Add, "Add another account", onAdd)
             SheetAction(Icons.Rounded.ManageAccounts, "Manage accounts", onManage)
+            androidx.compose.material3.HorizontalDivider(Modifier.padding(vertical = 6.dp), color = CloudlyTheme.extra.line)
+            if (onTransfers != null) {
+                SheetAction(
+                    androidx.compose.material.icons.Icons.Rounded.SwapVert, "Transfers", onTransfers,
+                    supporting = if (activeTransfers > 0) "$activeTransfers in progress" else "Uploads, downloads and copies",
+                )
+            }
+            if (onSettings != null) {
+                SheetAction(androidx.compose.material.icons.Icons.Rounded.Settings, "Settings", onSettings,
+                    supporting = "Theme, downloads, cache, privacy")
+            }
         }
     }
 }

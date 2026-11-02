@@ -1,6 +1,6 @@
 # Cloudly — Multi-Account Google Drive Manager
 
-Cloudly is an Android app for managing several Google Drive accounts in one place: browse, organise, preview, transfer and clean up files across every Drive you use. It handles Google Drive only. There's no Gmail, Calendar or Photos integration, and Cloudly has no account system of its own.
+Cloudly is an Android app for managing several Google Drive accounts in one place: browse, organise, preview, transfer and clean up files across every Drive you use, and bring in photos from Google Photos. Cloudly has no account system of its own.
 
 | Home | Files | Storage | Search across accounts | Light theme |
 |---|---|---|---|---|
@@ -40,6 +40,20 @@ Cloudly is an Android app for managing several Google Drive accounts in one plac
   - Privacy information and About.
 - **Background transfers.** Transfers run under WorkManager with a foreground notification. Uploads are chunked and resumable, transient errors are retried with backoff, and you can retry or cancel from the Transfers screen.
 
+## Navigation
+
+There are four tabs: **Home**, **Files**, **Photos** and **Storage**. Every screen has the same header, with your profile picture at the top right. Tap it to switch or add accounts, or to open **Transfers** and **Settings**. Home has a search bar and three shortcuts: Upload, Photos and All files.
+
+## Google Photos
+
+Since March 2025, Google doesn't let third-party apps browse a user's whole Google Photos library. Cloudly uses Google's official **Photos Picker API** instead:
+
+1. On the Photos tab, tap **Choose from Google Photos**. The first time, approve access on Google's screen.
+2. Google's picker opens. Select photos and videos, tap **Done**, and come back to Cloudly. Your picks appear automatically.
+3. Tap **Save to Drive** to put them in any connected account and folder, or **To phone** to save them on the device. Saving runs in the background.
+
+Cloudly can only see the items you pick, and only for a limited time.
+
 ## Authorization and scopes
 
 Cloudly asks for **one Drive scope per account**, and you choose it when connecting:
@@ -72,7 +86,8 @@ Cloudly asks for **one Drive scope per account**, and you choose it when connect
    cloudly.webClientId=1234567890-xxxxxxxx.apps.googleusercontent.com
    ```
    You can also use the `CLOUDLY_WEB_CLIENT_ID` environment variable or the `-Pcloudly.webClientId=…` Gradle property. Without it, Cloudly falls back to letting Google's authorization screen choose the account.
-5. Build and run:
+5. For Google Photos, enable the **Photos Picker API** in the same project. Then add the scope `https://www.googleapis.com/auth/photospicker.mediaitems.readonly` to the consent screen.
+6. Build and run:
    ```bash
    ./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
    ./gradlew testDebugUnitTest    # unit + screenshot tests

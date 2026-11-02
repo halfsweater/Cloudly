@@ -44,7 +44,7 @@ class GoogleAuthManager(
     context: Context,
     private val vault: TokenVault,
     private val accounts: AccountDao,
-) : AccessTokenSource {
+) : AccessTokenSource, com.halfblanket.cloudly.data.photos.PhotosPickerApi.PhotosTokenSource {
 
     private val app = context.applicationContext
     private val authClient = Identity.getAuthorizationClient(app)
@@ -187,6 +187,39 @@ class GoogleAuthManager(
         val token = memory.remove(accountId)?.token ?: vault.read(accountId)?.token
         vault.delete(accountId)
         if (token != null) withContext(Dispatchers.IO) { runCatching { GoogleAuthUtil.clearToken(app, token) } }
+    }
+
+    // ------------------------------------------------------------------ Google Photos (Picker API)
+
+    /** Photos tokens are requested separately (incremental authorization) and kept in memory only. */
+    private val photosMemory = ConcurrentHashMap<String, TokenVault.Entry>()
+
+    /** Thrown when the account hasn't approved Google Photos access yet; the UI shows Google's consent. */
+    class PhotosConsentRequired(val intent: PendingIntent) : Exception("Google Photos access needs your approval")
+
+    /** Requests the Photos Picker scope for [accountId]; returns the consent intent if approval is needed. */
+    suspend fun authorizePhotos(accountId: String): AuthOutcome {
+        val account = accounts.byId(accountId) ?: throw CloudlyException.Safety("This account is no longer connected")
+        val outcome = authorize(account.email, com.halfblanket.cloudly.data.photos.PhotosPickerApi.SCOPE)
+        if (outcome is AuthOutcome.Granted) storePhotos(accountId, outcome.token)
+        return outcome
+    }
+
+    fun storePhotos(accountId: String, token: String) {
+        photosMemory[accountId] = TokenVault.Entry(token, System.currentTimeMillis() + TOKEN_LIFETIME_MS)
+    }
+
+    override suspend fun photosToken(accountId: String): String {
+        photosMemory[accountId]?.takeIf { it.isFresh() }?.let { return it.token }
+        return when (val o = authorizePhotos(accountId)) {
+            is AuthOutcome.Granted -> o.token
+            is AuthOutcome.NeedsConsent -> throw PhotosConsentRequired(o.intent)
+        }
+    }
+
+    override suspend fun invalidatePhotos(accountId: String, token: String) {
+        photosMemory.remove(accountId)
+        withContext(Dispatchers.IO) { runCatching { GoogleAuthUtil.clearToken(app, token) } }
     }
 
     fun dropTemporary(tempId: String) {

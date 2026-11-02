@@ -34,6 +34,14 @@ sealed interface TransferPayload {
     @Serializable
     data class Download(val accountId: String, val fileId: String) : TransferPayload
 
+    /** Picked Google Photos items, saved into a Drive folder ([targetAccountId] non-null) or to the device. */
+    @Serializable
+    data class Photos(
+        val items: List<com.halfblanket.cloudly.data.photos.PickedPhoto>,
+        val targetAccountId: String? = null,
+        val targetFolderId: String? = null,
+    ) : TransferPayload
+
     @Serializable
     data class CrossAccount(
         val sourceAccountId: String,
@@ -138,6 +146,8 @@ abstract class TransferWorker(context: Context, params: WorkerParameters) : Coro
         TransferKind.DOWNLOAD -> "Download complete"
         TransferKind.CROSS_COPY -> "Copied to other account"
         TransferKind.CROSS_MOVE -> "Moved to other account"
+        TransferKind.PHOTOS_TO_DRIVE -> "Saved to Google Drive"
+        TransferKind.PHOTOS_DOWNLOAD -> "Saved to this phone"
     }
 
     companion object {
@@ -327,5 +337,61 @@ class CrossAccountWorker(context: Context, params: WorkerParameters) : TransferW
         } finally {
             temp.delete()
         }
+    }
+}
+
+/**
+ * Saves picked Google Photos items either into a Drive folder (download from Photos, resumable upload to
+ * Drive) or into the device's download location. Each item is independent; failures are reported at the end.
+ */
+class PhotosWorker(context: Context, params: WorkerParameters) : TransferWorker(context, params) {
+    // Picker base URLs expire about an hour after picking, so a whole-job retry later would mostly fail.
+    override val autoRetry = false
+
+    override suspend fun run(payload: TransferPayload) {
+        val p = payload as TransferPayload.Photos
+        val photos = container.photosApi
+        progress.itemsTotal = p.items.size
+        val failed = mutableListOf<String>()
+        for (item in p.items) {
+            currentCoroutineContext().ensureActive()
+            progress.detail = item.filename
+            try {
+                if (p.targetAccountId != null && p.targetFolderId != null) {
+                    val temp = File(applicationContext.cacheDir, "transfer/${transferId}_${item.id.hashCode()}").apply { parentFile?.mkdirs() }
+                    try {
+                        temp.outputStream().use { photos.download(item, it) }
+                        container.driveApi.uploadResumable(
+                            accountId = p.targetAccountId,
+                            metadata = FileMetadataBody(name = item.filename, parents = listOf(p.targetFolderId)),
+                            contentType = item.mimeType,
+                            source = LocalFiles.FileUploadSource(temp),
+                        )
+                    } finally {
+                        temp.delete()
+                    }
+                } else {
+                    val settings = container.settings.current()
+                    val target = LocalFiles.openDownloadTarget(
+                        applicationContext, settings.downloadTreeUri, LocalFiles.sanitize(item.filename), item.mimeType,
+                    )
+                    try {
+                        target.output.use { photos.download(item, it) }
+                        target.commit()
+                    } catch (e: Throwable) {
+                        target.abort()
+                        throw e
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                failed += item.filename
+            }
+            progress.itemsDone++
+        }
+        progress.detail = if (failed.isEmpty()) "Saved ${p.items.size} item(s)"
+        else "${p.items.size - failed.size} saved · ${failed.size} failed: ${failed.take(3).joinToString()}"
+        if (failed.size == p.items.size) throw CloudlyException.Unsupported("Couldn't save the selected items. The picker links may have expired; pick them again.")
     }
 }

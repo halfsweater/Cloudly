@@ -88,10 +88,10 @@ class ScreenshotTest {
 
     @Test fun home() = captureRoboImage("build/outputs/roborazzi/home.png") {
         Frame {
-            Column(Modifier.padding(top = 16.dp)) {
-                Text("Good evening", style = MaterialTheme.typography.bodyMedium, color = CloudlyTheme.extra.muted, modifier = Modifier.padding(horizontal = 20.dp))
-                Text("Sam", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 20.dp))
-                AccountSwitcherChip(personal, {}, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Column {
+                com.halfblanket.cloudly.ui.components.CloudlyTopBar("Hi, Sam", personal, {}, subtitle = "Good evening")
+                com.halfblanket.cloudly.ui.components.SearchPill("Search all your Drives", {})
+                com.halfblanket.cloudly.ui.home.QuickActions({}, {}, {})
                 StorageCard(personal) {}
                 SectionHeader("All accounts")
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

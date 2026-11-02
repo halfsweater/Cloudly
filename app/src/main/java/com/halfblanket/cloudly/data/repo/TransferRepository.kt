@@ -84,6 +84,22 @@ class TransferRepository(
         )
     }
 
+    /** Saves picked Google Photos items to a Drive folder, or to this device when no target is given. */
+    suspend fun enqueuePhotos(
+        items: List<com.halfblanket.cloudly.data.photos.PickedPhoto>,
+        targetAccountId: String?,
+        targetFolderId: String?,
+    ) {
+        require(items.isNotEmpty())
+        val source = items.first().accountId
+        val title = if (items.size == 1) items.first().filename else "${items.size} photos & videos"
+        enqueue(
+            if (targetAccountId != null) TransferKind.PHOTOS_TO_DRIVE else TransferKind.PHOTOS_DOWNLOAD,
+            source, targetAccountId, title, 0,
+            TransferPayload.Photos(items, targetAccountId, targetFolderId),
+        )
+    }
+
     private suspend fun enqueue(
         kind: TransferKind,
         sourceAccount: String,
@@ -111,6 +127,7 @@ class TransferRepository(
             TransferKind.UPLOAD -> OneTimeWorkRequestBuilder<UploadWorker>()
             TransferKind.DOWNLOAD -> OneTimeWorkRequestBuilder<DownloadWorker>()
             TransferKind.CROSS_COPY, TransferKind.CROSS_MOVE -> OneTimeWorkRequestBuilder<CrossAccountWorker>()
+            TransferKind.PHOTOS_TO_DRIVE, TransferKind.PHOTOS_DOWNLOAD -> OneTimeWorkRequestBuilder<com.halfblanket.cloudly.work.PhotosWorker>()
         }
         val request = builder
             .setInputData(workDataOf(TransferWorker.KEY_ID to id))

@@ -114,6 +114,8 @@ private fun TransferCard(
         TransferKind.DOWNLOAD -> Icons.Rounded.CloudDownload to "Download"
         TransferKind.CROSS_COPY -> Icons.Rounded.SwapHoriz to "Copy between accounts"
         TransferKind.CROSS_MOVE -> Icons.Rounded.SwapHoriz to "Move between accounts"
+        TransferKind.PHOTOS_TO_DRIVE -> Icons.Rounded.CloudUpload to "Google Photos → Drive"
+        TransferKind.PHOTOS_DOWNLOAD -> Icons.Rounded.CloudDownload to "Google Photos → phone"
     }
     val statusColor = when (t.status) {
         TransferStatus.SUCCEEDED -> CloudlyTheme.extra.success

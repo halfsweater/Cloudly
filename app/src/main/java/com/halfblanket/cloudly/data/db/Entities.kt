@@ -30,7 +30,7 @@ data class AccountEntity(
     val addedAt: Long = System.currentTimeMillis(),
 )
 
-enum class TransferKind { UPLOAD, DOWNLOAD, CROSS_COPY, CROSS_MOVE }
+enum class TransferKind { UPLOAD, DOWNLOAD, CROSS_COPY, CROSS_MOVE, PHOTOS_TO_DRIVE, PHOTOS_DOWNLOAD }
 enum class TransferStatus { QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED }
 
 @Entity(tableName = "transfers", indices = [Index("createdAt")])

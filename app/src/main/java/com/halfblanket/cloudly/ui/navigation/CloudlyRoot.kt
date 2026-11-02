@@ -18,11 +18,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.PieChart
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PieChart
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -86,6 +86,7 @@ import kotlinx.serialization.Serializable
 @Serializable object FilesRoute
 @Serializable object StorageRoute
 @Serializable object SettingsRoute
+@Serializable object PhotosRoute
 @Serializable object SearchRoute
 @Serializable object TransfersRoute
 @Serializable object PrivacyRoute
@@ -99,8 +100,8 @@ private data class Tab(val route: Any, val label: String, val selected: ImageVec
 private val tabs = listOf(
     Tab(HomeRoute, "Home", Icons.Rounded.Home, Icons.Outlined.Home),
     Tab(FilesRoute, "Files", Icons.Rounded.Folder, Icons.Outlined.Folder),
+    Tab(PhotosRoute, "Photos", Icons.Rounded.PhotoLibrary, Icons.Outlined.PhotoLibrary),
     Tab(StorageRoute, "Storage", Icons.Rounded.PieChart, Icons.Outlined.PieChart),
-    Tab(SettingsRoute, "Settings", Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
 
 @Composable
@@ -140,6 +141,7 @@ fun CloudlyRoot(openTransfers: StateFlow<Int>) {
     val nav = rememberNavController()
     val filesVm = activityViewModel { FilesViewModel(it) }
     val storageVm = activityViewModel { StorageViewModel(it) }
+    val photosVm = activityViewModel { com.halfblanket.cloudly.ui.photos.PhotosViewModel(it) }
     val transfers by c.transferRepository.observe().collectAsStateWithLifecycle(emptyList())
     val activeTransfers = transfers.count { it.isActive }
     var switcher by rememberSaveable { mutableStateOf(false) }
@@ -207,6 +209,7 @@ fun CloudlyRoot(openTransfers: StateFlow<Int>) {
                     onOpenFolder = openFolderInFiles,
                     onPreview = openPreview,
                     onSeeAllFiles = { nav.switchTab(FilesRoute) },
+                    onOpenPhotos = { nav.switchTab(PhotosRoute) },
                 )
             }
             composable<FilesRoute>(enterTransition = { fadeIn(tween(200)) }, exitTransition = { fadeOut(tween(150)) }) {
@@ -226,10 +229,15 @@ fun CloudlyRoot(openTransfers: StateFlow<Int>) {
                     onOpenCleanup = { id, kind -> nav.navigate(CleanupRoute(id, kind.name)) },
                     onOpenTrash = { id -> nav.navigate(TrashRoute(id)) },
                     onPreview = openPreview,
+                    onAvatar = openAccounts,
                 )
             }
-            composable<SettingsRoute>(enterTransition = { fadeIn(tween(200)) }, exitTransition = { fadeOut(tween(150)) }) {
+            composable<PhotosRoute>(enterTransition = { fadeIn(tween(200)) }, exitTransition = { fadeOut(tween(150)) }) {
+                com.halfblanket.cloudly.ui.photos.PhotosScreen(photosVm, accounts, onAvatar = openAccounts)
+            }
+            composable<SettingsRoute> {
                 SettingsScreen(
+                    onBack = { nav.popBackStack() },
                     accounts = accounts,
                     connector = connector,
                     onTransfers = { nav.navigate(TransfersRoute) },
@@ -266,8 +274,11 @@ fun CloudlyRoot(openTransfers: StateFlow<Int>) {
                 scope.launch { c.accountRepository.setActive(acc.id) }
             },
             onAdd = { switcher = false; adding = true },
-            onManage = { switcher = false; nav.switchTab(SettingsRoute) },
+            onManage = { switcher = false; nav.navigate(SettingsRoute) { launchSingleTop = true } },
             onDismiss = { switcher = false },
+            onTransfers = { switcher = false; nav.navigate(TransfersRoute) { launchSingleTop = true } },
+            activeTransfers = activeTransfers,
+            onSettings = { switcher = false; nav.navigate(SettingsRoute) { launchSingleTop = true } },
         )
     }
     if (adding) {

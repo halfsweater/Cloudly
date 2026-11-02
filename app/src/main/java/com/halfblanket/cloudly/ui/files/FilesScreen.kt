@@ -94,7 +94,7 @@ import com.halfblanket.cloudly.ui.common.AccountConnector
 import com.halfblanket.cloudly.ui.common.NewItemSheet
 import com.halfblanket.cloudly.ui.common.cloudlyViewModel
 import com.halfblanket.cloudly.ui.common.rememberUploadLaunchers
-import com.halfblanket.cloudly.ui.components.AccountSwitcherChip
+import com.halfblanket.cloudly.ui.components.CloudlyTopBar
 import com.halfblanket.cloudly.ui.components.Banner
 import com.halfblanket.cloudly.ui.components.EmptyState
 import com.halfblanket.cloudly.ui.components.FileGridItem
@@ -139,21 +139,10 @@ fun FilesScreen(
                 if (selecting) {
                     SelectionBar(state, vm, actions, accounts)
                 } else {
-                    Column(Modifier.statusBarsPadding()) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Files", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                    Column {
+                        CloudlyTopBar("Files", account, onOpenAccounts) {
                             IconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search") }
-                            IconButton(onClick = vm::toggleLayout) {
-                                Icon(
-                                    if (state.layout == LayoutMode.LIST) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
-                                    if (state.layout == LayoutMode.LIST) "Grid view" else "List view",
-                                )
-                            }
-                            SortMenu(state.sort, vm::setSort)
-                            AccountSwitcherChip(account, onOpenAccounts, Modifier.padding(start = 4.dp, end = 8.dp))
+                            SortMenu(state.sort, vm::setSort, state.layout, vm::toggleLayout)
                         }
                         LocationChips(state.location, vm::setLocation)
                         if (state.crumbs.isNotEmpty()) Breadcrumbs(state, vm)
@@ -355,11 +344,30 @@ private fun Breadcrumbs(state: FilesUiState, vm: FilesViewModel) {
 }
 
 @Composable
-fun SortMenu(sort: SortOrder, onChange: (SortOrder) -> Unit) {
+fun SortMenu(
+    sort: SortOrder,
+    onChange: (SortOrder) -> Unit,
+    layout: LayoutMode? = null,
+    onToggleLayout: (() -> Unit)? = null,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, "Sort") }
+        IconButton(onClick = { open = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, "View and sort options") }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            if (layout != null && onToggleLayout != null) {
+                Text("View", style = MaterialTheme.typography.labelMedium, color = CloudlyTheme.extra.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                listOf(LayoutMode.LIST to "List", LayoutMode.GRID to "Grid").forEach { (mode, label) ->
+                    DropdownMenuItem(
+                        text = { Text(label) },
+                        onClick = { open = false; if (layout != mode) onToggleLayout() },
+                        leadingIcon = { if (layout == mode) Icon(Icons.Rounded.Check, null) else Spacer(Modifier.size(24.dp)) },
+                        trailingIcon = {
+                            Icon(if (mode == LayoutMode.GRID) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList, null, Modifier.size(18.dp))
+                        },
+                    )
+                }
+                HorizontalDivider(color = CloudlyTheme.extra.line)
+            }
             Text("Sort by", style = MaterialTheme.typography.labelMedium, color = CloudlyTheme.extra.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             SortField.entries.forEach { f ->
                 DropdownMenuItem(

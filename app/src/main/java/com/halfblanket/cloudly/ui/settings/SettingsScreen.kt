@@ -92,6 +92,7 @@ fun SettingsScreen(
     onTransfers: () -> Unit,
     onPrivacy: () -> Unit,
     onAbout: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val c = context.container
@@ -126,7 +127,10 @@ fun SettingsScreen(
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
-            Text("Settings", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.statusBarsPadding().padding(start = 20.dp, top = 16.dp))
+            Row(Modifier.statusBarsPadding().fillMaxWidth().height(64.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
+                Text("Settings", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = if (onBack == null) 16.dp else 0.dp))
+            }
         }
 
         item { SectionHeader("Google accounts") }
